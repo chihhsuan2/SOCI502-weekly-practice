@@ -1,0 +1,73 @@
+---
+title: "week3cch"
+author: "Chih-Hsuan Chang"
+format: pdf
+editor: visual
+date: 2026-09-29
+bibliography: bibliography.bib
+---
+
+```{r}
+{r}
+library(tidyverse)
+library(janitor)
+```
+
+```{r}
+simulated_data <-
+  tibble(
+    "Division" = 1:338,
+    "Party" = sample(
+      x = c("Liberal", "Conservative", "Bloc Québécois", "New Democratic", "Green","Other"),
+      size = 338,
+      replace = TRUE
+    )
+  )
+
+raw_canada_data<-
+  read_csv(file = "https://www.elections.ca/res/rep/off/ovr2021app/53/data_donnees/table_tableau11.csv")
+
+cleaned_canada_data<-
+  clean_names(raw_canada_data)
+
+cleaned_canada_data <-#R的|>和rename() 都不會直接修改原本的資料表，只會「產生一個改名後的新資料表」，解決方法：加上<-存回去
+  cleaned_canada_data |>  
+  rename(
+    electoral_district = electoral_district_name_nom_de_circonscription,
+    elected_candidate = elected_candidate_candidat_elu
+  )
+
+names(cleaned_canada_data)
+
+cleaned_canada_data <-
+  cleaned_canada_data |>
+  separate(
+    col = elected_candidate,
+    into = c("Other", "party"),
+    sep = "/"
+  ) |>
+  select(-Other)
+
+cleaned_canada_data <-
+  cleaned_canada_data |>
+  mutate(
+    elected_candidate_eg =
+      case_match(
+        party,
+        "Libéral" ~ "Liberal",
+        "Conservateur" ~ "Conservative",
+        "Bloc Québécois" ~ "Bloc Québécois",
+        "NPD-Nouveau Parti démocratique" ~ "New Democratic",
+        "The Greens" ~ "Greens",
+        "Parti Vert" ~ "Others"
+      )
+  )
+
+cleaned_canada_data |>
+  count(party, sort = TRUE)
+
+#利用圖層疊加的概念來呈現資料
+ggplot(cleaned_canada_data, aes(x = elected_candidate_eg,)) + 
+  geom_bar() +
+  labs(x = "Party", y = "Number of ridings",title = "the number of ridings won by each party in the 2021 Canadian Federal Election")
+```
