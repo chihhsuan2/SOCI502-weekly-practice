@@ -1,0 +1,13 @@
+---
+title: "week3cch"
+author: "Chih-Hsuan Chang"
+format: pdf
+editor: visual
+date: 2026-09-29
+bibliography: bibliography.bib
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
