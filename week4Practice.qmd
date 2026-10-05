@@ -1,0 +1,38 @@
+---
+title: "week4P"
+format: html
+---
+
+```{r}
+install.packages("devtools") 
+devtools::install_github("ttimbers/canlang")
+
+```
+
+```{r}
+install.packages("devtools")
+devtools::install_github("ttimbers/canlang")
+```
+
+```{r}
+install.packages("remotes")   # if you don't have it
+remotes::install_github("ttimbers/canlang")
+library(canlang)
+```
+
+```{r}
+can_lang
+library(cancensus)
+library(canlang)
+library(knitr)
+install.packages("maps")
+library(maps)
+install.packages("tidycensus")
+library(tidycensus)
+install.packages("tidyverse")
+library(tidyverse)
+```
+
+```{r}
+
+```
