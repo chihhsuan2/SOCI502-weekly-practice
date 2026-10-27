@@ -13,21 +13,98 @@ execute:
 
 ## Quarto
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+install.packages("pdftools")
+library(janitor)
+library(knitr)
+library(pdftools)
+library(tidyverse)
+install.packages("validate")
+library(validate)
+install.packages("stringi")
+library(stringi)
 ```
 
-You can add options to executable code like this
-
 ```{r}
-#| echo: false
-2 * 2
+kenya_census <-
+  pdf_text(
+    pdf = "2019_Kenya_census.pdf"
+  )
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+# Focus on the page of interest
+just_nairobi <- stri_split_lines(kenya_census[[410]])[[1]]
+
+# Remove blank lines
+just_nairobi <- just_nairobi[just_nairobi != ""]
+
+# Remove titles, headings and other content at the top of the page
+just_nairobi <- just_nairobi[5:length(just_nairobi)]
+
+# Remove page numbers and other content at the bottom of the page
+just_nairobi <- just_nairobi[1:62]
+
+# Convert into a tibble
+demography_data <- tibble(all = just_nairobi)
+```
+
+```{r}
+demography_data <-
+  demography_data |>
+  mutate(all = str_squish(all)) |>
+  mutate(all = str_replace(all, "10 -14", "10-14")) |>
+  mutate(all = str_replace(all, "Not Stated", "NotStated")) |>
+  # Deal with the two column set-up
+  separate(
+    col = all,
+    into = c(
+      "age", "male", "female", "total",
+      "age_2", "male_2", "female_2", "total_2"
+    ),
+    sep = " ",
+    remove = TRUE,
+    fill = "right",
+    extra = "drop"
+  )
+```
+
+```{r}
+demography_data_long <-
+  rbind(
+    demography_data |> select(age, male, female, total),
+    demography_data |>
+      select(age_2, male_2, female_2, total_2) |>
+      rename(
+        age = age_2,
+        male = male_2,
+        female = female_2,
+        total = total_2
+      )
+  )
+```
+
+```{r}
+# There is one row of NAs, so remove it
+demography_data_long <-
+  demography_data_long |>
+  remove_empty(which = c("rows"))
+
+demography_data_long
+```
+
+```{r}
+demography_data_long |>
+  select(male, female, total) |>
+  mutate(across(everything(), ~ str_remove_all(., "[:digit:]"))) |>
+  distinct()
+```
+
+```{r}
+demography_data_long <-
+  demography_data_long |>
+  mutate(across(c(male, female, total), ~ str_remove_all(., ","))) |>
+  mutate(across(c(male, female, total), ~ as.integer(.)))
+
+demography_data_long
+```
