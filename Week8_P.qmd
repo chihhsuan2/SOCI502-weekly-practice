@@ -1,0 +1,50 @@
+---
+title: "Week8_CCH"
+format: pdf
+editor: visual
+author: "Chih-Hsuan Chang"
+date: "2026-10-27"
+execute:
+  echo: true
+  output: true
+  warning: false
+  message: false
+---
+
+## Quarto
+
+```{r}
+install.packages("pdftools")
+library(janitor)
+library(knitr)
+library(pdftools)
+library(tidyverse)
+install.packages("validate")
+library(validate)
+install.packages("stringi")
+library(stringi)
+```
+
+```{r}
+kenya_census <-
+  pdf_text(
+    pdf = "2019_Kenya_census.pdf"
+  )
+```
+
+```{r}
+# Focus on the page of interest
+just_nairobi <- stri_split_lines(kenya_census[[410]])[[1]]
+
+# Remove blank lines
+just_nairobi <- just_nairobi[just_nairobi != ""]
+
+# Remove titles, headings and other content at the top of the page
+just_nairobi <- just_nairobi[5:length(just_nairobi)]
+
+# Remove page numbers and other content at the bottom of the page
+just_nairobi <- just_nairobi[1:62]
+
+# Convert into a tibble
+demography_data <- tibble(all = just_nairobi)
+```
