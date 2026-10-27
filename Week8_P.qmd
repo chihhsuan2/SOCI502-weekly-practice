@@ -11,7 +11,7 @@ execute:
   message: false
 ---
 
-## Quarto
+## **9.7 2019 Kenyan census**
 
 ```{r}
 install.packages("pdftools")
@@ -47,4 +47,149 @@ just_nairobi <- just_nairobi[1:62]
 
 # Convert into a tibble
 demography_data <- tibble(all = just_nairobi)
+```
+
+```{r}
+demography_data <-
+  demography_data |>
+  mutate(all = str_squish(all)) |>
+  mutate(all = str_replace(all, "10 -14", "10-14")) |>
+  mutate(all = str_replace(all, "Not Stated", "NotStated")) |>
+  # Deal with the two column set-up
+  separate(
+    col = all,
+    into = c(
+      "age", "male", "female", "total",
+      "age_2", "male_2", "female_2", "total_2"
+    ),
+    sep = " ",
+    remove = TRUE,
+    fill = "right",
+    extra = "drop"
+  )
+```
+
+```{r}
+demography_data_long <-
+  rbind(
+    demography_data |> select(age, male, female, total),
+    demography_data |>
+      select(age_2, male_2, female_2, total_2) |>
+      rename(
+        age = age_2,
+        male = male_2,
+        female = female_2,
+        total = total_2
+      )
+  )
+```
+
+```{r}
+# There is one row of NAs, so remove it
+demography_data_long <-
+  demography_data_long |>
+  remove_empty(which = c("rows"))
+
+demography_data_long
+```
+
+```{r}
+demography_data_long |>
+  select(male, female, total) |>
+  mutate(across(everything(), ~ str_remove_all(., "[:digit:]"))) |>
+  distinct()
+```
+
+```{r}
+demography_data_long <-
+  demography_data_long |>
+  mutate(across(c(male, female, total), ~ str_remove_all(., ","))) |>
+  mutate(across(c(male, female, total), ~ as.integer(.)))
+
+demography_data_long
+```
+
+```{r}
+demography_data_long <-
+  demography_data_long |>
+  mutate(
+    age_type = if_else(str_detect(age, "-"), 
+                       "age-group", 
+                       "single-year"),
+    age_type = if_else(str_detect(age, "Total"), 
+                       "age-group", 
+                       age_type)
+  )
+```
+
+```{r}
+demography_data_long <-
+  demography_data_long |>
+  mutate(
+    age = as_factor(age)
+  )
+```
+
+```{r}
+demography_data_long |>
+  mutate(
+    check_sum = male + female,
+    totals_match = if_else(total == check_sum, 1, 0)
+  ) |>
+  filter(totals_match == 0)
+```
+
+```{r}
+demography_data_long |>
+  mutate(age_groups = if_else(age_type == "age-group", 
+                              age, 
+                              NA_character_)) |>
+  fill(age_groups, .direction = "up") |>
+  mutate(
+    group_sum = sum(total),
+    group_sum = group_sum / 2,
+    difference = total - group_sum,
+    .by = c(age_groups)
+  ) |>
+  filter(age_type == "age-group" & age_groups != "Total") |> 
+  head()
+```
+
+```{r}
+demography_data_tidy <-
+  demography_data_long |>
+  rename_with(~paste0(., "_total"), male:total) |>
+  pivot_longer(cols = contains("_total"), 
+               names_to = "type", 
+               values_to = "number") |>
+  separate(
+    col = type,
+    into = c("gender", "part_of_area"),
+    sep = "_"
+  ) |>
+  select(age, age_type, gender, number)
+```
+
+```{r}
+install.packages("scales")
+library(scales)
+demography_data_tidy |>
+  filter(age_type == "single-year") |>
+  select(age, gender, number) |>
+  filter(gender != "total") |>
+  ggplot(aes(x = age, y = number, fill = gender)) +
+  geom_col(aes(x = age, y = number, fill = gender), 
+           position = "dodge") +
+  scale_y_continuous(labels = comma) +
+  scale_x_discrete(breaks = c(seq(from = 0, to = 99, by = 5), "100+")) +
+  theme_classic() +
+  scale_fill_brewer(palette = "Set1") +
+  labs(
+    y = "Number",
+    x = "Age",
+    fill = "Gender",
+    caption = "Data source: 2019 Kenya Census"
+  ) +
+  theme(legend.position = "bottom") +
+  coord_flip()
 ```
